@@ -3,11 +3,11 @@ from pydantic import BaseModel
 import os
 import requests
 from bs4 import BeautifulSoup
-import google.generativeai as genai
+from google import genai
 
 app = FastAPI()
 
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 class Prospecto(BaseModel):
     url: str
@@ -19,7 +19,6 @@ def analizar(datos: Prospecto):
         soup = BeautifulSoup(response.text, 'html.parser')
         texto_web = " ".join([p.text for p in soup.find_all(['p', 'h1', 'h2', 'h3'])])[:5000]
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         Actúa como un experto en ventas B2B y asesor comercial de nuestra agencia. 
         Analiza esta empresa según su web, califica sus puntos débiles y genera una estrategia de ventas y correo en frío:
@@ -27,7 +26,10 @@ def analizar(datos: Prospecto):
         Contenido: {texto_web}
         """
         
-        response_ai = model.generate_content(prompt)
+        response_ai = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt,
+        )
         return {"exito": True, "analisis": response_ai.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
